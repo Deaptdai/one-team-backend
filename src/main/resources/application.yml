@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: one-team
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${deapt.datasource.username}
+    password: ${deapt.datasource.password}
+    url:  ${deapt.datasource.url}
+server:
+  port: 8080
