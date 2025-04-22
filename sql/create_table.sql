@@ -1,3 +1,4 @@
+drop table if exists user;
 create table if not exists deapt.user
 (
     id           bigint auto_increment comment 'id'
@@ -6,11 +7,10 @@ create table if not exists deapt.user
     userAccount  varchar(256)                       null comment '账号',
     avatarUrl    varchar(1024)                      null comment '用户头像',
     gender       tinyint                            null comment '性别',
-    column_name  int                                null,
     userPassword varchar(512)                       not null comment '用户密码',
     phone        varchar(128)                       null comment '电话',
     email        varchar(512)                       null comment '邮箱',
-    usrStatus    int      default 0                 not null comment '状态0 - 正常',
+    userStatus    int      default 0                 not null comment '状态0 - 正常',
     createTime   datetime default CURRENT_TIMESTAMP null comment '创建时间',
     updateTime   datetime default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP comment '更新时间',
     isDelete     tinyint  default 0                 not null comment '是否删除0-否'

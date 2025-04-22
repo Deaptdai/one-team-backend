@@ -1,10 +1,15 @@
 spring:
   application:
     name: one-team
+  profiles:
+    active: dev
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: ${deapt.datasource.username}
     password: ${deapt.datasource.password}
-    url:  ${deapt.datasource.url}
+    url: ${deapt.datasource.url}
 server:
   port: 8080
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: false
