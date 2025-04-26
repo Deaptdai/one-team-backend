@@ -1,4 +1,5 @@
-drop table if exists user;
+drop table if exists user; # 删除user表
+truncate table user; # 删除表中所有数据
 create table if not exists deapt.user
 (
     id           bigint auto_increment comment 'id'

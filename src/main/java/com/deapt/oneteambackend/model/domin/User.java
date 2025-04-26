@@ -1,17 +1,25 @@
-package com.deapt.oneteambackend.model.domain;
+package com.deapt.oneteambackend.model.domin;
 
 import com.baomidou.mybatisplus.annotation.*;
 
 import java.io.Serializable;
 import java.util.Date;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
- * 用户表
+ * @author Deapt
+ * @description 这是一个用户数据传输对象
  * @TableName user
  */
 @TableName(value ="user")
 @Data
+@NoArgsConstructor //生成无参构造
+@AllArgsConstructor //生成全参构造
+@Builder // 提供链式构造器模式
 public class User implements Serializable {
     /**
      * id
@@ -72,7 +80,7 @@ public class User implements Serializable {
     /**
      * 是否删除0-否
      */
-    @TableLogic
+    @TableLogic(value="0",delval="1")
     private Integer isDelete;
 
     @TableField(exist = false)
