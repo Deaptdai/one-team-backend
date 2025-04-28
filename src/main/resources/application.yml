@@ -8,8 +8,14 @@ spring:
     username: ${deapt.datasource.username}
     password: ${deapt.datasource.password}
     url: ${deapt.datasource.url}
+  #  session失效时间
+  session:
+    timeout: 60000
 server:
   port: 8080
+  #  指定全局api
+#  servlet:
+#    context-path: /api
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: false

@@ -13,8 +13,12 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
 * @author Deapt
@@ -27,6 +31,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Resource
     private UserMapper userMapper;
+
+    /**
+     * 用户注册
+     * @param userAccount 用户账户
+     * @param userPassword 用户密码
+     * @param checkPassword 校验密码
+     * @return 用户注册id
+     */
     @Override
     public long userRegister(String userAccount, String userPassword, String checkPassword) {
         //1. 校验
@@ -73,6 +85,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
         //3. 插入数据
         User user = new User();
+        //user.setUsername(userAccount); //默认用户名与账户名相同
+        //自动生成用户编码(0-8位不重复的数字)
+        String userCode = String.valueOf(System.currentTimeMillis());
+        user.setUserCode(userCode);
         user.setUserAccount(userAccount);
         user.setUserPassword(encryptPassword);
         boolean saveUser = this.save(user);
@@ -84,6 +100,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         return user.getId();
     }
 
+    /**
+     * 用户登录
+     * @param userAccount  用户账户
+     * @param userPassword 用户密码
+     * @param request 客户端的请求
+     * @return 登录用户信息
+     */
     @Override
     public User userLogin(String userAccount, String userPassword, HttpServletRequest request) {
         //1. 校验
@@ -107,23 +130,96 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
 
         //3.用户数据脱敏（隐藏敏感信息）,使用链式构造器
-        User safetyUser = User.builder()
-                .id(user.getId())
-                .username(user.getUsername())
-                .userAccount(user.getUserAccount())
-                .avatarUrl(user.getAvatarUrl())
-                .gender(user.getGender())
-                .phone(user.getPhone())
-                .email(user.getEmail())
-                .userStatus(user.getUserStatus())
-                .createTime(user.getCreateTime())
-                .build();
+        User safetyUser = getSafetyUser(user);
 
         //4. 记录用户的登录状态
         request.getSession().setAttribute(UserConstant.USER_LOGIN_STATE, safetyUser);
 
         return safetyUser;
     }
+
+    /**
+     * 查询用户
+     * @param username 用户名
+     * @param request 客户端的请求
+     * @return 用户列表
+     */
+    @Override
+    public List<User> search(String username,HttpServletRequest request) {
+        if (notAdmin(request)){
+            return new ArrayList<>();
+        }
+
+        LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
+        if (StringUtils.isNotBlank(username)) {
+            queryWrapper.like(User::getUsername, username);
+        }
+        List<User> userList = this.list(queryWrapper);
+
+        return userList.stream().map(this::getSafetyUser).collect(Collectors.toList());
+    }
+
+    /**
+     * 删除用户
+     * @param id 用户id
+     * @param request 客户端的请求
+     * @return 是否成功
+     */
+    @Override
+    public boolean delete(long id,HttpServletRequest request) {
+        if (notAdmin(request) || id <= 0) {
+            return false;
+        }
+
+        return this.removeById(id);
+    }
+
+    /**
+     * 检验权限
+     * @param request 请求
+     * @return 是否为管理员
+     */
+    private boolean notAdmin(HttpServletRequest request){
+        //鉴权，仅管理员可查询
+        Object userObject = request.getSession().getAttribute(UserConstant.USER_LOGIN_STATE);
+        User user = (User) userObject;
+        if (user == null)
+            return false;
+        return !Objects.equals(user.getUserRole(), UserConstant.ADMIN_ROLE);
+    }
+
+    /**
+     * 用户脱敏
+     * @param originUser 用户
+     * @return 脱敏用户
+     */
+    @Override
+    public User getSafetyUser(User originUser){
+        return User.builder()
+                .id(originUser.getId())
+                .username(originUser.getUsername())
+                .userAccount(originUser.getUserAccount())
+                .avatarUrl(originUser.getAvatarUrl())
+                .gender(originUser.getGender())
+                .phone(originUser.getPhone())
+                .email(originUser.getEmail())
+                .userRole(originUser.getUserRole())
+                .userCode(originUser.getUserCode())
+                .userStatus(originUser.getUserStatus())
+                .createTime(originUser.getCreateTime())
+                .build();
+    }
+
+    /**
+     * 用户退出登录
+     * @param request 客户端请求
+     */
+    @Override
+    public void userLogout(HttpServletRequest request) {
+        //移除登陆态
+        request.getSession().removeAttribute(UserConstant.USER_LOGIN_STATE);
+    }
+
 }
 
 

@@ -43,4 +43,9 @@ class UserServiceTest {
         long result = userService.userRegister(userAccount, userPassword, checkPassword);
         Assertions.assertEquals(-1,result);
     }
+
+    @Test
+    void getCurrentUser(){
+        userService.getById()
+    }
 }

@@ -2,6 +2,7 @@ package com.deapt.oneteambackend.model.domin;
 
 import com.baomidou.mybatisplus.annotation.*;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Date;
 
@@ -83,6 +84,17 @@ public class User implements Serializable {
     @TableLogic(value="0",delval="1")
     private Integer isDelete;
 
+    /**
+     * 用户角色 0-普通用户，1-管理员
+     */
+    private Integer userRole;
+
+    /**
+     * 用户编号
+     */
+    private String userCode;
+
+    @Serial
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;
 }

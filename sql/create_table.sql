@@ -1,6 +1,5 @@
-drop table if exists user; # 删除user表
-truncate table user; # 删除表中所有数据
-create table if not exists deapt.user
+-- auto-generated definition
+create table user
 (
     id           bigint auto_increment comment 'id'
         primary key,
@@ -11,9 +10,12 @@ create table if not exists deapt.user
     userPassword varchar(512)                       not null comment '用户密码',
     phone        varchar(128)                       null comment '电话',
     email        varchar(512)                       null comment '邮箱',
-    userStatus    int      default 0                 not null comment '状态0 - 正常',
+    userStatus   int      default 0                 not null comment '状态0 - 正常',
     createTime   datetime default CURRENT_TIMESTAMP null comment '创建时间',
     updateTime   datetime default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP comment '更新时间',
-    isDelete     tinyint  default 0                 not null comment '是否删除0-否'
+    isDelete     tinyint  default 0                 not null comment '是否删除0-否',
+    userRole     int      default 0                 not null comment '用户角色 0-普通用户 1-管理员',
+    userCode     varchar(512)                       null comment '用户编号码'
 )
     comment '用户表';
+
