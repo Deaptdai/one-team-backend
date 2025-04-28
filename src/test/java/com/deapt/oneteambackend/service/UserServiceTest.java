@@ -44,8 +44,4 @@ class UserServiceTest {
         Assertions.assertEquals(-1,result);
     }
 
-    @Test
-    void getCurrentUser(){
-        userService.getById()
-    }
 }

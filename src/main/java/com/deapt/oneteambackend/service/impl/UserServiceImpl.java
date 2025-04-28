@@ -2,7 +2,9 @@ package com.deapt.oneteambackend.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.deapt.oneteambackend.common.result.StatusCode;
 import com.deapt.oneteambackend.constant.UserConstant;
+import com.deapt.oneteambackend.exception.BaseException;
 import com.deapt.oneteambackend.model.domin.User;
 import com.deapt.oneteambackend.service.UserService;
 import com.deapt.oneteambackend.mapper.UserMapper;
@@ -44,27 +46,28 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         //1. 校验
         //判断是否有空值
         if (StringUtils.isAnyBlank(userAccount,userPassword,checkPassword)){
-            return -1;
+            log.info("账号或密码不能为空");
+            throw new BaseException(StatusCode.PARAMETER_ERROR,"账号或密码不能为空");
         }
 
         //校验密码和密码相同
         if (!checkPassword.equals(userPassword)){
-            log.info("密码不同");
-            return -1;
+            log.info("两次密码不一致");
+            throw new BaseException(StatusCode.PARAMETER_ERROR,"两次密码不一致");
         }
 
         //账号符合要求
         Matcher matcher = Pattern.compile(UserConstant.REG_EXP_ACCOUNT).matcher(userAccount);
         if (!matcher.find()){
-            log.info("账号不符合要求");
-            return -1;
+            log.info("账号格式错误");
+            throw new BaseException(StatusCode.PARAMETER_ERROR,"账号格式错误");
         }
 
         //密码符合要求
         matcher = Pattern.compile(UserConstant.REG_EXP_PASSWORD).matcher(userPassword);
         if (!matcher.find()){
-            log.info("密码不符合要求");
-            return -1;
+            log.info("密码格式错误");
+            throw new BaseException(StatusCode.PARAMETER_ERROR,"密码格式错误");
         }
 
         //账户不能重复
@@ -75,8 +78,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         //执行查询并统计符合条件的数据条数
         long count = userMapper.selectCount(queryWrapper);
         if (count > 0){
-            log.info("账号重复");
-            return -1;
+            log.info("账户已存在");
+            throw new BaseException(StatusCode.ACCOUNT_EXIST_ERROR,"用户账号重复");
         }
 
         //2. 加密
@@ -94,7 +97,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         boolean saveUser = this.save(user);
         if (!saveUser){
             log.info("数据插入失败");
-            return -1;
+            throw new BaseException(StatusCode.ERROR,"保存用户错误");
         }
 
         return user.getId();
@@ -112,7 +115,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         //1. 校验
         //判断是否有空值
         if (StringUtils.isAnyBlank(userAccount,userPassword)){
-            return null;
+            log.info("账号或密码不能为空");
+            throw new BaseException(StatusCode.PARAMETER_ERROR,"账号或密码不能为空");
         }
 
         //2. 加密
@@ -125,8 +129,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         lambdaQueryWrapper.eq(User::getUserPassword,encryptPassword);
         User user = userMapper.selectOne(lambdaQueryWrapper);
         if (user == null){
-            log.info("账号或密码错误，请重新输入");
-            return null;
+            log.info("账号或密码错误");
+            throw new BaseException(StatusCode.PARAMETER_ERROR,"账号或密码错误");
         }
 
         //3.用户数据脱敏（隐藏敏感信息）,使用链式构造器
@@ -147,7 +151,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public List<User> search(String username,HttpServletRequest request) {
         if (notAdmin(request)){
-            return new ArrayList<>();
+            log.info("用户权限不足");
+            throw new BaseException(StatusCode.USER_NO_AUTH,"用户权限不足");
         }
 
         LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
@@ -167,10 +172,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      */
     @Override
     public boolean delete(long id,HttpServletRequest request) {
-        if (notAdmin(request) || id <= 0) {
-            return false;
+        if (notAdmin(request)) {
+            log.info("用户权限不足");
+            throw new BaseException(StatusCode.USER_NO_AUTH,"用户权限不足");
         }
-
+        if (id <= 0){
+            log.info("用户id不合法");
+            throw new BaseException(StatusCode.PARAMETER_ERROR,"用户id不合法");
+        }
         return this.removeById(id);
     }
 
@@ -183,8 +192,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         //鉴权，仅管理员可查询
         Object userObject = request.getSession().getAttribute(UserConstant.USER_LOGIN_STATE);
         User user = (User) userObject;
-        if (user == null)
-            return false;
+        if (user == null){
+            log.info("用户未登录");
+            throw new BaseException(StatusCode.USER_NOT_LOGIN,"用户未登录");
+        }
         return !Objects.equals(user.getUserRole(), UserConstant.ADMIN_ROLE);
     }
 
