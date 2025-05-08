@@ -7,6 +7,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 import jakarta.annotation.Resource;
 
+import java.util.Arrays;
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -44,4 +47,11 @@ class UserServiceTest {
         Assertions.assertEquals(-1,result);
     }
 
+    @Test
+    void searchUsersByTags() {
+        List<String> tagList = Arrays.asList("后端开发","前端开发");
+
+        List<User> userList = userService.searchUsersByTags(tagList);
+        Assertions.assertNotNull(userList);
+    }
 }

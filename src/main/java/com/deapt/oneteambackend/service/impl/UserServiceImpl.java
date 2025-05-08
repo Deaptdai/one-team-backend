@@ -1,6 +1,7 @@
 package com.deapt.oneteambackend.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.deapt.oneteambackend.common.result.StatusCode;
 import com.deapt.oneteambackend.constant.UserConstant;
@@ -8,16 +9,19 @@ import com.deapt.oneteambackend.exception.BaseException;
 import com.deapt.oneteambackend.model.domin.User;
 import com.deapt.oneteambackend.service.UserService;
 import com.deapt.oneteambackend.mapper.UserMapper;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.ibatis.annotations.Options;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.DigestUtils;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -217,6 +221,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 .userRole(originUser.getUserRole())
                 .userCode(originUser.getUserCode())
                 .userStatus(originUser.getUserStatus())
+                .tags(originUser.getTags())
                 .createTime(originUser.getCreateTime())
                 .build();
     }
@@ -231,6 +236,67 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         request.getSession().removeAttribute(UserConstant.USER_LOGIN_STATE);
     }
 
+    /**
+     * 根据标签搜索用户（内存过滤版）
+     * @param tagNameList 用户拥有标签列表
+     * @return 用户列表
+     */
+    @Override
+    public List<User> searchUsersByTags(List<String> tagNameList){
+        if (CollectionUtils.isEmpty(tagNameList)){
+            throw new BaseException(StatusCode.PARAMETER_ERROR,"标签列表不能为空");
+        }
+
+        //1. 先查询所有用户
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        List<User> userList = userMapper.selectList(queryWrapper);
+        Gson gson = new Gson();
+
+        //2. 在内存中判断是否包含要求的标签
+        return userList.stream().filter((user -> {
+            String tagsStr = user.getTags();
+            if (StringUtils.isBlank(tagsStr)) {
+                return false;
+            }
+            Set<String> tagNameSet = gson.fromJson(tagsStr, new TypeToken<Set<String>>() {}.getType());
+            //判断是否为空， 设置默认值
+            tagNameSet = Optional.ofNullable(tagNameSet).orElse(new HashSet<>());
+
+            for (String tagName : tagNameList) {
+                if (!tagNameSet.contains(tagName)) {
+                    return false;
+                }
+            }
+            return true;
+        })).map(this::getSafetyUser).collect(Collectors.toList());
+    }
+
+    /**
+     * 根据标签搜索用户（sql查询版）
+     * @param tagNameList 用户拥有标签列表
+     * @return 用户列表
+     */
+    @Deprecated
+    private List<User> searchUsersByTagsBySQL(List<String> tagNameList){
+        if (CollectionUtils.isEmpty(tagNameList)){
+            throw new BaseException(StatusCode.PARAMETER_ERROR,"标签列表不能为空");
+        }
+
+        //先进行一次空查询，排除掉数据库连接的时间
+        userMapper.selectCount(null);
+
+        if (CollectionUtils.isEmpty(tagNameList)){
+            throw new BaseException(StatusCode.PARAMETER_ERROR,"标签列表不能为空");
+        }
+
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        for (String tagName : tagNameList) {
+            queryWrapper = queryWrapper.like("tags", tagName);
+        }
+
+        List<User> userList = userMapper.selectList(queryWrapper);
+        return userList.stream().map(this::getSafetyUser).collect(Collectors.toList());
+    }
 }
 
 

@@ -59,4 +59,11 @@ public interface UserService extends IService<User> {
      * @param request 客户端请求
      */
     void userLogout(HttpServletRequest request);
+
+    /**
+     * 根据标签搜索用户
+     * @param tagNameList 用户拥有标签列表
+     * @return 用户列表
+     */
+    List<User> searchUsersByTags(List<String> tagNameList);
 }
