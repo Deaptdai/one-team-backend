@@ -2,7 +2,7 @@ package com.deapt.oneteambackend.service;
 
 import com.deapt.oneteambackend.model.domin.User;
 import com.baomidou.mybatisplus.extension.service.IService;
-import jakarta.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletRequest;
 
 import java.util.List;
 
@@ -48,6 +48,20 @@ public interface UserService extends IService<User> {
     boolean delete(long id,HttpServletRequest request);
 
     /**
+     * 判断用户是否是管理员
+     * @param request 客户端请求
+     * @return 如果是管理员则返回 true
+     */
+    boolean notAdmin(HttpServletRequest request);
+
+    /**
+     * 判断用户是否不是管理员
+     * @param loginUser 登录用户
+     * @return 如果不是管理员则返回 true
+     */
+    boolean notAdmin(User loginUser);
+
+    /**
      * 用户脱敏
      * @param originUser 用户
      * @return 脱敏用户
@@ -66,4 +80,20 @@ public interface UserService extends IService<User> {
      * @return 用户列表
      */
     List<User> searchUsersByTags(List<String> tagNameList);
+
+    /**
+     * 更新用户信息
+     *
+     * @param user 当前用户信息
+     * @return 大于一的整数表示更新成功
+     */
+    int updateUser(User user,User loginUser);
+
+    /**
+     * 获取当前登录用户
+     *
+     * @param request 客户端请求
+     * @return 当前登录用户
+     */
+    User getLoginUser(HttpServletRequest request);
 }

@@ -5,7 +5,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.util.Assert;
 
-import jakarta.annotation.Resource;
+import javax.annotation.Resource;
 import org.springframework.util.DigestUtils;
 
 import java.nio.charset.StandardCharsets;

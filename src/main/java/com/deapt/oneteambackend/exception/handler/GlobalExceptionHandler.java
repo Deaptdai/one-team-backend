@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @Slf4j
 @RestControllerAdvice //Spring AOP: 在调用方法前后进行额外的处理
+ // 隐藏该类，使其不会出现在生成的 OpenAPI 文档中
 public class GlobalExceptionHandler {
     @ExceptionHandler(BaseException.class)// 捕获自定义基础异常
     public Result baseExceptionHandler(BaseException e) {

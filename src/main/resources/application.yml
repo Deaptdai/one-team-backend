@@ -3,21 +3,37 @@ spring:
     name: one-team
   profiles:
     active: dev
+  # mysql数据库配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: ${deapt.datasource.username}
     password: ${deapt.datasource.password}
     url: ${deapt.datasource.url}
-  #  session失效时间
+  # redis配置
+  redis:
+    host: ${deapt.redis.host}
+    port: ${deapt.redis.port}
+    database: ${deapt.redis.database}
+  #  session失效时间，单位为秒
   session:
-    timeout: 60000
+    timeout: 86400
+    # 设置session存储类型为redis
+    store-type: redis
+  # 启用 Spring Boot 的 ANSI 颜色支持
+  output:
+    ansi:
+      enabled: always
 server:
   port: 8080
   #  指定全局api
-#  servlet:
-#    context-path: /api
+  servlet:
+    context-path: /api
+    session:
+      cookie:
+        domain: localhost
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: false
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl # 开启 SQL 日志
   mapper-locations: classpath*:mapper/**/*.xml
+

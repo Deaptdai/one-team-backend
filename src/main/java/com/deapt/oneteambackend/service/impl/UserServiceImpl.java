@@ -11,16 +11,14 @@ import com.deapt.oneteambackend.service.UserService;
 import com.deapt.oneteambackend.mapper.UserMapper;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import jakarta.annotation.Resource;
-import jakarta.servlet.http.HttpServletRequest;
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.ibatis.annotations.Options;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.DigestUtils;
 
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -127,11 +125,24 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         //密码加密
         String encryptPassword = DigestUtils.md5DigestAsHex((UserConstant.SALT + userPassword).getBytes());
 
-        //3.查询
+        //3.先判断是否为管理员，提升管理员登录速度
+        User admin = userMapper.selectById(1);
+        if (admin.getUserAccount().equals(userAccount) && admin.getUserPassword().equals(encryptPassword)) {
+            //如果是管理员，直接返回管理员信息
+            //用户数据脱敏（隐藏敏感信息）,使用链式构造器
+            User safetyUser = getSafetyUser(admin);
+
+            //记录用户的登录状态
+            request.getSession().setAttribute(UserConstant.USER_LOGIN_STATE, safetyUser);
+            return getSafetyUser(safetyUser);
+        }
+
+        //4.查询普通用户
         LambdaQueryWrapper<User> lambdaQueryWrapper = new LambdaQueryWrapper<>();
         lambdaQueryWrapper.eq(User::getUserAccount,userAccount);
         lambdaQueryWrapper.eq(User::getUserPassword,encryptPassword);
         User user = userMapper.selectOne(lambdaQueryWrapper);
+
         if (user == null){
             log.info("账号或密码错误");
             throw new BaseException(StatusCode.PARAMETER_ERROR,"账号或密码错误");
@@ -192,7 +203,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      * @param request 请求
      * @return 是否为管理员
      */
-    private boolean notAdmin(HttpServletRequest request){
+    @Override
+    public boolean notAdmin(HttpServletRequest request){
         //鉴权，仅管理员可查询
         Object userObject = request.getSession().getAttribute(UserConstant.USER_LOGIN_STATE);
         User user = (User) userObject;
@@ -201,6 +213,21 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new BaseException(StatusCode.USER_NOT_LOGIN,"用户未登录");
         }
         return !Objects.equals(user.getUserRole(), UserConstant.ADMIN_ROLE);
+    }
+
+    /**
+     * 检验权限
+     * @param loginUser 登录用户
+     * @return 是否为管理员
+     */
+    @Override
+    public boolean notAdmin(User loginUser){
+        //鉴权，仅管理员可查询
+        if (loginUser == null){
+            log.info("用户未登录");
+            throw new BaseException(StatusCode.USER_NOT_LOGIN,"用户未登录");
+        }
+        return !Objects.equals(loginUser.getUserRole(), UserConstant.ADMIN_ROLE);
     }
 
     /**
@@ -222,6 +249,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 .userCode(originUser.getUserCode())
                 .userStatus(originUser.getUserStatus())
                 .tags(originUser.getTags())
+                .userProfile(originUser.getUserProfile())
                 .createTime(originUser.getCreateTime())
                 .build();
     }
@@ -269,6 +297,49 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             }
             return true;
         })).map(this::getSafetyUser).collect(Collectors.toList());
+    }
+
+    /**
+     * 更新用户信息
+     * @param user 当前用户信息
+     * @return 更新结果
+     */
+    @Override
+    public int updateUser(User user, User loginUser) {
+        long userId = user.getId();
+        if (userId <= 0) {
+            throw new BaseException(StatusCode.PARAMETER_ERROR, "用户id不合法");
+        }
+        //todo 补充校验，如果传入的用户只有id，则不更新，直接报错
+
+        // 如果是管理员，则可以更新任意用户信息,如果是普通用户，则只能更新自己的信息
+        if (notAdmin(loginUser) && !Objects.equals(user.getId(), loginUser.getId())) {
+            throw new BaseException(StatusCode.USER_NO_AUTH, "无权限更新用户信息");
+        }
+
+        User oldUser = userMapper.selectById(userId);
+        if (oldUser == null) {
+            throw new BaseException(StatusCode.PARAMETER_ERROR, "用户不存在");
+        }
+        // 更新用户信息
+        return userMapper.updateById(user);
+    }
+
+    /**
+     * 获取当前登录用户
+     * @param request 客户端请求
+     * @return 当前登录用户
+     */
+    @Override
+    public User getLoginUser(HttpServletRequest request) {
+        if (request == null) {
+            throw new BaseException(StatusCode.REQUEST_IS_NULL, "请求不能为空");
+        }
+        Object userObj = request.getSession().getAttribute(UserConstant.USER_LOGIN_STATE);
+        if (userObj == null) {
+            throw new BaseException(StatusCode.USER_NOT_LOGIN, "用户未登录");
+        }
+        return (User) userObj;
     }
 
     /**

@@ -2,7 +2,6 @@ package com.deapt.oneteambackend.model.domin;
 
 import com.baomidou.mybatisplus.annotation.*;
 
-import java.io.Serial;
 import java.io.Serializable;
 import java.util.Date;
 
@@ -99,7 +98,11 @@ public class User implements Serializable {
      */
     private String tags;
 
-    @Serial
+    /**
+     * 个人简介
+     */
+    private String userProfile;
+
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;
 }
