@@ -8,7 +8,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@MapperScan("com.deapt.oneteambackend.mapper")
 public class MybatisPlusConfig {
     /**
      * 添加分页插件

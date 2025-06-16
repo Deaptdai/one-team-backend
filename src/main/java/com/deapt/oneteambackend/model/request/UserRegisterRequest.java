@@ -1,4 +1,4 @@
-package com.deapt.oneteambackend.model.domin.request;
+package com.deapt.oneteambackend.model.request;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
