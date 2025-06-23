@@ -10,6 +10,7 @@ import com.deapt.oneteambackend.model.domin.User;
 import com.deapt.oneteambackend.model.dto.TeamQueryDTO;
 import com.deapt.oneteambackend.model.request.TeamAddRequest;
 import com.deapt.oneteambackend.model.request.TeamJoinRequest;
+import com.deapt.oneteambackend.model.request.TeamQuitRequest;
 import com.deapt.oneteambackend.model.request.TeamUpdateRequest;
 import com.deapt.oneteambackend.model.vo.TeamUserVO;
 import com.deapt.oneteambackend.service.TeamService;
@@ -54,11 +55,12 @@ public class TeamController {
     }
 
     @DeleteMapping("/delete")
-    public Result<Boolean> deleteTeam(@RequestBody long id){
+    public Result<Boolean> deleteTeam(@RequestBody long id, HttpServletRequest request){
         if (id <= 0){
             throw new BaseException(StatusCode.REQUEST_IS_NULL,"请求参数为空");
         }
-        boolean result = teamService.removeById(id);
+        User loginUser = userService.getLoginUser(request);
+        boolean result = teamService.deleteTeam(id,loginUser);
         if (!result){
             throw new BaseException(StatusCode.ERROR,"删除失败");
         }
@@ -123,6 +125,19 @@ public class TeamController {
         boolean result = teamService.joinTeam(teamJoinRequest, loginUser);
         if (!result) {
             throw new BaseException(StatusCode.ERROR, "加入队伍失败");
+        }
+        return Result.success(true, StatusCode.SUCCESS);
+    }
+
+    @PostMapping("/quit")
+    public Result<Boolean> quitTeam(@RequestBody TeamQuitRequest teamQuitRequest, HttpServletRequest request) {
+        if (teamQuitRequest == null) {
+            throw new BaseException(StatusCode.REQUEST_IS_NULL, "请求参数为空");
+        }
+        User loginUser = userService.getLoginUser(request);
+        boolean result = teamService.quitTeam(teamQuitRequest, loginUser);
+        if (!result) {
+            throw new BaseException(StatusCode.ERROR, "退出队伍失败");
         }
         return Result.success(true, StatusCode.SUCCESS);
     }

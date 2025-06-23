@@ -5,6 +5,7 @@ import com.deapt.oneteambackend.model.domin.Team;
 import com.deapt.oneteambackend.model.domin.User;
 import com.deapt.oneteambackend.model.dto.TeamQueryDTO;
 import com.deapt.oneteambackend.model.request.TeamJoinRequest;
+import com.deapt.oneteambackend.model.request.TeamQuitRequest;
 import com.deapt.oneteambackend.model.request.TeamUpdateRequest;
 import com.deapt.oneteambackend.model.vo.TeamUserVO;
 
@@ -46,4 +47,19 @@ public interface TeamService extends IService<Team> {
      * @return 队伍信息
      */
     boolean joinTeam(TeamJoinRequest teamJoinRequest, User loginUser);
+
+    /**
+     * 退出队伍
+     * @param teamQuitRequest 队伍退出请求
+     * @param loginUser 当前登录用户
+     * @return 是否退出成功
+     */
+    boolean quitTeam(TeamQuitRequest teamQuitRequest, User loginUser);
+
+    /**
+     * 解散队伍
+     * @param id 队伍ID
+     * @return 是否解散成功
+     */
+    boolean deleteTeam(long id, User loginUser);
 }

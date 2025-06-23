@@ -6,7 +6,7 @@ import java.io.Serializable;
 
 /**
  * @author Deapt
- * @description
+ * @description 用户加入队伍请求类
  * @since 2025/6/16 16:38
  */
 @Data

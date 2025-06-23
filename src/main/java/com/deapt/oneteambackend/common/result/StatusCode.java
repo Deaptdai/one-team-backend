@@ -16,7 +16,8 @@ public enum StatusCode {
     PARAMETER_ERROR(400, "请求参数错误"),
     USER_NO_AUTH(403, "用户权限不足"),
     SYSTEM_ERROR(500, "系统异常"),
-    ACCOUNT_EXIST_ERROR(400, "账号已存在");
+    ACCOUNT_EXIST_ERROR(400, "账号已存在"),
+    FORBIDDEN(403, "禁止访问");
 
 
     /**
