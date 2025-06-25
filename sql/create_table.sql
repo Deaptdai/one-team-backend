@@ -32,7 +32,7 @@ create table team
     expireTime  datetime                           null comment '创建时间',
     userId      bigint comment '用户id（队长id）',
     status      int      default 0                 not null comment '状态 0 - 公开,1- 私有,2 - 加密',
-    password    varchar(512)                       null comment '密码',
+    password    varchar(512)                       null comment '密码（固定为5位）',
     createTime  datetime default CURRENT_TIMESTAMP null comment '创建时间',
     updateTime  datetime default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP,
     isDelete    tinyint  default 0                 not null comment '是否删除'

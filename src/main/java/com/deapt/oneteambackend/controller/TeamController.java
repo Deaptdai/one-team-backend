@@ -2,11 +2,13 @@ package com.deapt.oneteambackend.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.deapt.oneteambackend.common.DeleteRequest;
 import com.deapt.oneteambackend.common.result.Result;
 import com.deapt.oneteambackend.common.result.StatusCode;
 import com.deapt.oneteambackend.exception.BaseException;
 import com.deapt.oneteambackend.model.domin.Team;
 import com.deapt.oneteambackend.model.domin.User;
+import com.deapt.oneteambackend.model.domin.UserTeam;
 import com.deapt.oneteambackend.model.dto.TeamQueryDTO;
 import com.deapt.oneteambackend.model.request.TeamAddRequest;
 import com.deapt.oneteambackend.model.request.TeamJoinRequest;
@@ -15,14 +17,17 @@ import com.deapt.oneteambackend.model.request.TeamUpdateRequest;
 import com.deapt.oneteambackend.model.vo.TeamUserVO;
 import com.deapt.oneteambackend.service.TeamService;
 import com.deapt.oneteambackend.service.UserService;
+import com.deapt.oneteambackend.service.UserTeamService;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.ibatis.annotations.Param;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * @author Deapt
@@ -42,6 +47,9 @@ public class TeamController {
     @Resource
     private TeamService teamService;
 
+    @Resource
+    private UserTeamService userTeamService;
+
     @PostMapping("/add")
     public Result<Long> addTeam(@RequestBody TeamAddRequest teamAddRequest, HttpServletRequest request){
         if (teamAddRequest == null){
@@ -54,11 +62,12 @@ public class TeamController {
         return Result.success(teamId,StatusCode.SUCCESS);
     }
 
-    @DeleteMapping("/delete")
-    public Result<Boolean> deleteTeam(@RequestBody long id, HttpServletRequest request){
-        if (id <= 0){
+    @PostMapping("/delete")
+    public Result<Boolean> deleteTeam(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request){
+        if (deleteRequest == null || deleteRequest.getId() <= 0){
             throw new BaseException(StatusCode.REQUEST_IS_NULL,"请求参数为空");
         }
+        long id = deleteRequest.getId();
         User loginUser = userService.getLoginUser(request);
         boolean result = teamService.deleteTeam(id,loginUser);
         if (!result){
@@ -82,8 +91,8 @@ public class TeamController {
     }
 
     @GetMapping("/get")
-    public Result<Team> getTeamById(@Param("id") long id){
-        if (id <= 0){
+    public Result<Team> getTeamById(@RequestParam("id") Long id){
+        if (id == null|| id <= 0 ){
             throw new BaseException(StatusCode.REQUEST_IS_NULL,"请求参数为空");
         }
         Team team = teamService.getById(id);
@@ -140,5 +149,47 @@ public class TeamController {
             throw new BaseException(StatusCode.ERROR, "退出队伍失败");
         }
         return Result.success(true, StatusCode.SUCCESS);
+    }
+
+    /**
+     * 获取我创建的队伍
+     * @param teamQueryDTO 队伍查询参数
+     * @param request 客户端请求
+     * @return 我创建的队伍列表
+     */
+    @GetMapping("/list/my/create")
+    public Result<List<TeamUserVO>> listCreatedTeams(TeamQueryDTO teamQueryDTO, HttpServletRequest request) {
+        if (teamQueryDTO == null) {
+            throw new BaseException(StatusCode.REQUEST_IS_NULL, "请求参数为空");
+        }
+        User loginUser = userService.getLoginUser(request);
+        teamQueryDTO.setUserId(loginUser.getId());
+        List<TeamUserVO> teamUserVOList = teamService.listTeams(teamQueryDTO, loginUser);
+        return Result.success(teamUserVOList, StatusCode.SUCCESS);
+    }
+
+    /**
+     * 获取我加入的队伍
+     * @param teamQueryDTO 队伍查询参数
+     * @param request 客户端请求
+     * @return 我加入的队伍列表
+     */
+    @GetMapping("/list/my/join")
+    public Result<List<TeamUserVO>> listJoinedTeams(TeamQueryDTO teamQueryDTO, HttpServletRequest request) {
+        if (teamQueryDTO == null) {
+            throw new BaseException(StatusCode.REQUEST_IS_NULL, "请求参数为空");
+        }
+        User loginUser = userService.getLoginUser(request);
+        QueryWrapper<UserTeam> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("userId", loginUser.getId());
+        List<UserTeam> userTeamList = userTeamService.list(queryWrapper);
+        //取出不重复的队伍id
+        Map<Long, List<UserTeam>> listMap = userTeamList.stream().collect(Collectors.groupingBy(UserTeam::getTeamId));
+
+        List<Long> teamIdList = new ArrayList<>(listMap.keySet());
+        teamQueryDTO.setIdList(teamIdList);
+
+        List<TeamUserVO> teamUserVOList = teamService.listTeams(teamQueryDTO, loginUser);
+        return Result.success(teamUserVOList, StatusCode.SUCCESS);
     }
 }

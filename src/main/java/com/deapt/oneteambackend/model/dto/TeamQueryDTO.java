@@ -6,6 +6,8 @@ import com.deapt.oneteambackend.common.PageRequest;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.util.List;
+
 
 /**
  * @author Deapt
@@ -21,6 +23,11 @@ public class TeamQueryDTO extends PageRequest {
      */
     @TableId(type = IdType.AUTO)
     private Long id;
+
+    /**
+     * id列表，通常用于批量操作
+     */
+    private List<Long> idList;
 
     /**
      * 搜索关键词，同时对名称和描述进行搜索

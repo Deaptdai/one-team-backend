@@ -122,6 +122,11 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
             if (id != null && id > 0) {
                 queryWrapper.eq("id", id);
             }
+            List<Long> idList = teamQueryDTO.getIdList();
+            if (!CollectionUtils.isEmpty(idList)) {
+                queryWrapper.in("id", idList);
+            }
+
             String searchText = teamQueryDTO.getSearchText();
             if (StringUtils.isNotBlank(searchText)) {
                 queryWrapper.and(wrapper -> wrapper.like("name", searchText)
@@ -147,13 +152,23 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
             Integer status = teamQueryDTO.getStatus();
             boolean notAdmin = userService.notAdmin(loginUser);
             TeamStatusEnum statusEnum = TeamStatusEnum.getEnumByValue(status);
+            //如果状态为null，默认查询公开和加密的队伍
             if (statusEnum == null) {
-                statusEnum = TeamStatusEnum.PUBLIC; // 默认公开状态
+                if (!notAdmin || Objects.equals(userId, loginUser.getId())){
+                    //管理员或者队伍创建者可以查询所有状态的队伍
+                    queryWrapper.in("status", TeamStatusEnum.PUBLIC.getValue(), TeamStatusEnum.SECRET.getValue(), TeamStatusEnum.PRIVATE.getValue());
+                } else  {
+                    //非管理员用户只能查询公开和加密的队伍
+                    queryWrapper.in("status", TeamStatusEnum.PUBLIC.getValue(), TeamStatusEnum.SECRET.getValue());
+                }
+            }else {
+                if (statusEnum == TeamStatusEnum.PRIVATE && notAdmin && !Objects.equals(userId, loginUser.getId())) {
+                    //非管理员用户不能查询私有队伍
+                    throw new BaseException(StatusCode.USER_NO_AUTH, "非管理员用户无权查询私有队伍");
+                }
+                queryWrapper.eq("status", statusEnum.getValue());
             }
-            if (notAdmin && !statusEnum.equals(TeamStatusEnum.PUBLIC)){
-                throw new BaseException(StatusCode.USER_NO_AUTH, "非管理员用户只能查询公开队伍");
-            }
-            queryWrapper.eq("status", statusEnum.getValue());
+
         }
         // 不展示已过期的队伍
         //expireTime > now() or expireTime is null
@@ -250,7 +265,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
             //加密队伍需要密码
             String password = teamJoinRequest.getPassword();
             if (StringUtils.isBlank(password) || !password.equals(team.getPassword())) {
-                throw new BaseException(StatusCode.PARAMETER_ERROR, "密码错误，无法加入加密队伍");
+                throw new BaseException(StatusCode.PARAMETER_ERROR, "密码错误，请重新输入");
             }
         }
 
@@ -259,21 +274,22 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
             throw new BaseException(StatusCode.PARAMETER_ERROR, "私有队伍不允许加入");
         }
 
-        //该用户已加入的队伍数量
+        //不能重复加入已经加入的队伍
         Long userId = loginUser.getId();
         QueryWrapper<UserTeam> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("userId", userId);
-        long hasTeamNum = userTeamService.count(queryWrapper);
-        if (hasTeamNum >= 5) {
-            throw new BaseException(StatusCode.PARAMETER_ERROR, "用户最多加入5个队伍");
-        }
-        //不能重复加入已经加入的队伍
-        queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("userId", userId);
         queryWrapper.eq("teamId", teamId);
         long hasUserJoinTeam = userTeamService.count(queryWrapper);
         if (hasUserJoinTeam > 0) {
-            throw new BaseException(StatusCode.PARAMETER_ERROR, "用户不能重复加入同一个队伍");
+            throw new BaseException(StatusCode.PARAMETER_ERROR, "用户已加入该队伍");
+        }
+
+        //该用户已加入的队伍数量
+         queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("userId", userId);
+        long hasTeamNum = userTeamService.count(queryWrapper);
+        if (hasTeamNum >= 5) {
+            throw new BaseException(StatusCode.PARAMETER_ERROR, "用户最多加入5个队伍");
         }
 
         //已经加入队伍的人数
