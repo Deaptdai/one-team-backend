@@ -1,7 +1,10 @@
 package com.deapt.oneteambackend.service;
 
+import com.deapt.oneteambackend.common.result.Result;
 import com.deapt.oneteambackend.model.domin.User;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.deapt.oneteambackend.model.vo.UserVO;
+
 import javax.servlet.http.HttpServletRequest;
 
 import java.util.List;
@@ -96,4 +99,12 @@ public interface UserService extends IService<User> {
      * @return 当前登录用户
      */
     User getLoginUser(HttpServletRequest request);
+
+    /**
+     * 匹配用户
+     * @param num 匹配数量
+     * @param loginUser 登录用户
+     * @return 匹配用户列表
+     */
+    List<User> matchUsers(long num, User loginUser);
 }

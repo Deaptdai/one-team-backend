@@ -9,15 +9,18 @@ import com.deapt.oneteambackend.model.domin.User;
 import com.deapt.oneteambackend.model.request.UserLoginRequest;
 import com.deapt.oneteambackend.model.request.UserRegisterRequest;
 import com.deapt.oneteambackend.common.result.Result;
+import com.deapt.oneteambackend.model.vo.UserVO;
 import com.deapt.oneteambackend.service.UserService;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -132,7 +135,10 @@ public class UserController {
             throw new BaseException(StatusCode.USER_NOT_LOGIN,"用户未登录");
         }
         long userId = currentUser.getId();
-        // TODO 校验用户是否合法
+        // 校验用户是否合法
+        if (userId <= 0) {
+            throw new BaseException(StatusCode.PARAMETER_ERROR, "用户ID不合法");
+        }
         User user = userService.getById(userId);
         return Result.success(user, StatusCode.SUCCESS);
     }
@@ -169,5 +175,31 @@ public class UserController {
             log.error("缓存写入失败: {}", e.getMessage());
         }
         return Result.success(userPage, StatusCode.SUCCESS);
+    }
+
+    /**
+     * 匹配用户
+     * @param num 匹配数量
+     * @param request HttpServletRequest
+     * @return Result<List<UserVO>>
+     */
+    @GetMapping("/match")
+    public Result<List<UserVO>> matchUser(Long num, HttpServletRequest request){
+        // 校验参数是否为空
+        if (num == null) {
+            throw new BaseException(StatusCode.PARAMETER_ERROR, "匹配数量不能为空");
+        }
+        if (num <= 0 || num > 20) {
+            throw new BaseException(StatusCode.PARAMETER_ERROR, "匹配数量必须大于0");
+        }
+        User loginUser = userService.getLoginUser(request);
+        List<UserVO> userVOList = new ArrayList<>();
+        List<User> userList = userService.matchUsers(num, loginUser);
+        for (User user : userList) {
+            UserVO userVO = new UserVO();
+            BeanUtils.copyProperties(user,userVO);
+            userVOList.add(userVO);
+        }
+        return Result.success(userVOList, StatusCode.SUCCESS);
     }
 }

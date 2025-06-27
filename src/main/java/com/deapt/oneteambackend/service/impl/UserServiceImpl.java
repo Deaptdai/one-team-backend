@@ -3,16 +3,22 @@ package com.deapt.oneteambackend.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.deapt.oneteambackend.common.result.Result;
 import com.deapt.oneteambackend.common.result.StatusCode;
 import com.deapt.oneteambackend.constant.UserConstant;
 import com.deapt.oneteambackend.exception.BaseException;
 import com.deapt.oneteambackend.model.domin.User;
+import com.deapt.oneteambackend.model.vo.UserVO;
 import com.deapt.oneteambackend.service.UserService;
 import com.deapt.oneteambackend.mapper.UserMapper;
+import com.deapt.oneteambackend.utils.AlgorithmUtils;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+
+import io.swagger.models.auth.In;
+import javafx.util.Pair;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
@@ -310,8 +316,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (userId <= 0) {
             throw new BaseException(StatusCode.PARAMETER_ERROR, "用户id不合法");
         }
-        //todo 补充校验，如果传入的用户只有id，则不更新，直接报错
-
+        // 如果传入的用户只有id，则不更新，直接报错
+        if (user.getUserAccount() == null && user.getUsername() == null && user.getAvatarUrl() == null &&
+                user.getGender() == null && user.getPhone() == null && user.getEmail() == null &&
+                user.getUserRole() == null && user.getUserCode() == null && user.getUserStatus() == null &&
+                user.getTags() == null && user.getUserProfile() == null) {
+            throw new BaseException(StatusCode.PARAMETER_ERROR, "没有需要更新的用户信息");
+        }
         // 如果是管理员，则可以更新任意用户信息,如果是普通用户，则只能更新自己的信息
         if (notAdmin(loginUser) && !Objects.equals(user.getId(), loginUser.getId())) {
             throw new BaseException(StatusCode.USER_NO_AUTH, "无权限更新用户信息");
@@ -340,6 +351,47 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new BaseException(StatusCode.USER_NOT_LOGIN, "用户未登录");
         }
         return (User) userObj;
+    }
+
+    @Override
+    public List<User> matchUsers(long num, User loginUser) {
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.select("id","tags");
+        queryWrapper.isNotNull("tags");
+        List<User> userList = this.list(queryWrapper);
+        String tags = loginUser.getTags();
+        Gson gson = new Gson();
+        List<String> tagList = gson.fromJson(tags, new TypeToken<List<String>>() {
+        }.getType());
+        //用户列表=>相似度
+        List<Pair<User, Long>> userDistanceList = new ArrayList<>();
+        for (User user : userList) {
+            String userTags = user.getTags();
+            // 无标签或者当前用户
+            if (StringUtils.isBlank(userTags) || Objects.equals(user.getId(), loginUser.getId())) {
+                continue; // 如果用户没有标签，则跳过
+            }
+            List<String> userTageList = gson.fromJson(userTags, new TypeToken<List<String>>() {
+            }.getType());
+            long distance = AlgorithmUtils.minDistance(tagList, userTageList);
+            userDistanceList.add(new Pair<>(user, distance));
+        }
+        List<Pair<User, Long>> topUserList = userDistanceList.stream().sorted((a, b) -> (int) (a.getValue() - b.getValue())).limit(num).collect(Collectors.toList());
+        //原本顺序userId列表
+        List<Long> idList = topUserList.stream().map(pair -> pair.getKey().getId()).collect(Collectors.toList());
+        if (CollectionUtils.isEmpty(idList)) {
+            return Collections.emptyList(); // 如果没有匹配的用户，则返回空列表
+        }
+        QueryWrapper<User> userQueryWrapper = new QueryWrapper<>();
+        userQueryWrapper.in("id", idList);
+        Map<Long,List<User>> userIdUserListMap = this.list(queryWrapper).stream()
+                .map(this::getSafetyUser)
+                .collect(Collectors.groupingBy(User::getId));
+        List<User> finalUserList = new ArrayList<>();
+        for (Long userId : idList) {
+            finalUserList.add(userIdUserListMap.get(userId).get(0));
+        }
+        return finalUserList;
     }
 
     /**
